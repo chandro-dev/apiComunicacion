@@ -1,0 +1,30 @@
+name: Deploy Raspberry Pi
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (example: latest or sha-xxxx)"
+        required: true
+        default: "latest"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.RPI_HOST }}
+          username: ${{ secrets.RPI_USER }}
+          key: ${{ secrets.RPI_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.RPI_APP_DIR }}
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
+            export GHCR_IMAGE="${{ secrets.GHCR_IMAGE }}"
+            export IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+
