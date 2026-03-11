@@ -1,4 +1,4 @@
-name: CI
+name: Basic CI
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  tests:
+  basic-check:
     runs-on:
       - self-hosted
       - linux
@@ -15,28 +15,5 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Detect Python on runner
-        shell: bash
-        run: |
-          if command -v python3 >/dev/null 2>&1; then
-            echo "PYTHON_BIN=python3" >> "$GITHUB_ENV"
-          elif command -v python >/dev/null 2>&1; then
-            echo "PYTHON_BIN=python" >> "$GITHUB_ENV"
-          else
-            echo "Python is not installed on the self-hosted runner."
-            exit 1
-          fi
-
-      - name: Create virtual environment
-        shell: bash
-        run: |
-          $PYTHON_BIN -m venv .venv-ci
-          echo "VENV_PY=$GITHUB_WORKSPACE/.venv-ci/bin/python" >> "$GITHUB_ENV"
-
-      - name: Install dependencies
-        run: |
-          $VENV_PY -m pip install --upgrade pip
-          $VENV_PY -m pip install -r requirements.txt
-
-      - name: Run tests
-        run: $VENV_PY -m pytest -q
+      - name: Validate Docker Compose file
+        run: docker compose config

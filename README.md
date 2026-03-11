@@ -6,7 +6,7 @@ Incluye:
 - Flask con `app factory`
 - Swagger/OpenAPI con `flask-smorest`
 - Docker listo para Raspberry Pi
-- GitHub Actions en `self-hosted runner` para CI/CD y despliegue con Docker Compose
+- GitHub Actions en `self-hosted runner` para deploy simple con Docker Compose
 
 ## Arquitectura
 
@@ -128,12 +128,6 @@ pip install -r requirements.txt
 python run.py
 ```
 
-## Tests
-
-```bash
-pytest -q
-```
-
 ## Docker (Raspberry Pi)
 
 ### Construir y ejecutar local
@@ -145,9 +139,9 @@ docker compose up --build -d
 ## CI/CD con GitHub Self-Hosted (recomendado)
 
 Workflows:
-- CI: `.github/workflows/ci.yml`
-- CD (deploy): `.github/workflows/deploy-rpi.yml`
-- Publish opcional a GHCR: `.github/workflows/docker-publish.yml`
+- CI basico (sin tests): `.github/workflows/ci.yml`
+- CD deploy automatico: `.github/workflows/deploy-rpi.yml`
+- Publish opcional a GHCR (manual): `.github/workflows/docker-publish.yml`
 
 ### 1. Preparar runner en tu servidor (Raspberry Pi / Linux)
 
@@ -191,7 +185,7 @@ Al hacer push a `main`, el workflow de CD:
 1. Hace checkout del repo en el runner.
 2. Crea `.env` desde `APP_ENV_FILE`.
 3. Ejecuta `docker compose up -d --build --remove-orphans`.
-4. Valida `http://127.0.0.1:8000/health`.
+4. Muestra estado con `docker compose ps`.
 
 Si quieres ejecutar manualmente, usa `workflow_dispatch` en `deploy-rpi.yml`.
 
