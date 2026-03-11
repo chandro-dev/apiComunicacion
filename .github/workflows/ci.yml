@@ -27,10 +27,16 @@ jobs:
             exit 1
           fi
 
+      - name: Create virtual environment
+        shell: bash
+        run: |
+          $PYTHON_BIN -m venv .venv-ci
+          echo "VENV_PY=$GITHUB_WORKSPACE/.venv-ci/bin/python" >> "$GITHUB_ENV"
+
       - name: Install dependencies
         run: |
-          $PYTHON_BIN -m pip install --upgrade pip
-          $PYTHON_BIN -m pip install -r requirements.txt
+          $VENV_PY -m pip install --upgrade pip
+          $VENV_PY -m pip install -r requirements.txt
 
       - name: Run tests
-        run: $PYTHON_BIN -m pytest -q
+        run: $VENV_PY -m pytest -q
