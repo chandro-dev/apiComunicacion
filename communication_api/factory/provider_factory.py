@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
 
 from communication_api.domain.enums import Channel
 from communication_api.exceptions import ConfigError
@@ -9,15 +8,7 @@ from communication_api.providers.base import NotificationProvider
 from communication_api.providers.email.console_provider import ConsoleEmailProvider
 from communication_api.providers.email.smtp_provider import SMTPEmailProvider
 from communication_api.providers.sms.console_provider import ConsoleSmsProvider
-from communication_api.providers.sms.supabase_provider import SupabaseOtpSmsProvider
-
-
-def _to_bool(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    if value is None:
-        return False
-    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+from communication_api.providers.sms.twilio_provider import TwilioSmsProvider
 
 
 class NotificationProviderFactory:
@@ -50,12 +41,14 @@ class NotificationProviderFactory:
         name = str(self.config.get("SMS_PROVIDER", "console")).strip().lower()
         if name == "console":
             return ConsoleSmsProvider()
-        if name == "supabase_otp":
-            return SupabaseOtpSmsProvider(
-                base_url=str(self.config.get("SUPABASE_URL", "")),
-                service_role_key=str(self.config.get("SUPABASE_SERVICE_ROLE_KEY", "")),
-                create_user=_to_bool(self.config.get("SUPABASE_SMS_CREATE_USER", True)),
-                timeout_seconds=float(self.config.get("SUPABASE_TIMEOUT_SECONDS", 10)),
+        if name in {"twilio", "twilio_sms"}:
+            return TwilioSmsProvider(
+                account_sid=str(self.config.get("TWILIO_ACCOUNT_SID", "")),
+                auth_token=str(self.config.get("TWILIO_AUTH_TOKEN", "")),
+                from_number=str(self.config.get("TWILIO_FROM_NUMBER", "")),
+                messaging_service_sid=str(
+                    self.config.get("TWILIO_MESSAGING_SERVICE_SID", "")
+                ),
+                timeout_seconds=float(self.config.get("TWILIO_TIMEOUT_SECONDS", 10)),
             )
         raise ConfigError(f"SMS_PROVIDER '{name}' is not supported")
-

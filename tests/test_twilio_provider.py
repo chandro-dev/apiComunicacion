@@ -1,0 +1,51 @@
+from __future__ import annotations
+
+import pytest
+
+from communication_api.domain.enums import Channel
+from communication_api.domain.models import NotificationPayload
+from communication_api.exceptions import ConfigError
+from communication_api.providers.sms.twilio_provider import TwilioSmsProvider
+
+
+def test_twilio_requires_sender_or_messaging_service() -> None:
+    with pytest.raises(ConfigError):
+        TwilioSmsProvider(
+            account_sid="AC123",
+            auth_token="token",
+            from_number="",
+            messaging_service_sid="",
+        )
+
+
+def test_twilio_send_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    class DummyResponse:
+        status_code = 201
+        text = '{"sid":"SM123"}'
+
+        @staticmethod
+        def json() -> dict[str, str]:
+            return {"sid": "SM123", "status": "queued", "direction": "outbound-api"}
+
+    def fake_post(*args, **kwargs) -> DummyResponse:  # noqa: ANN002, ANN003
+        return DummyResponse()
+
+    monkeypatch.setattr("communication_api.providers.sms.twilio_provider.requests.post", fake_post)
+
+    provider = TwilioSmsProvider(
+        account_sid="AC123",
+        auth_token="token",
+        from_number="+15005550006",
+    )
+    result = provider.send(
+        NotificationPayload(
+            channel=Channel.SMS,
+            recipient="+573001112233",
+            message="Hola",
+        )
+    )
+
+    assert result.ok is True
+    assert result.message_id == "SM123"
+    assert result.provider == "twilio-sms"
+

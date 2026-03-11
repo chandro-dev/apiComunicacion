@@ -21,14 +21,14 @@ class BaseConfig:
     SMTP_FROM = os.getenv("SMTP_FROM", "")
     SMTP_TIMEOUT_SECONDS = float(os.getenv("SMTP_TIMEOUT_SECONDS", "10"))
 
-    SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-    SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-    SUPABASE_SMS_CREATE_USER = os.getenv("SUPABASE_SMS_CREATE_USER", "true")
-    SUPABASE_TIMEOUT_SECONDS = float(os.getenv("SUPABASE_TIMEOUT_SECONDS", "10"))
+    TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
+    TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
+    TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER", "")
+    TWILIO_MESSAGING_SERVICE_SID = os.getenv("TWILIO_MESSAGING_SERVICE_SID", "")
+    TWILIO_TIMEOUT_SECONDS = float(os.getenv("TWILIO_TIMEOUT_SECONDS", "10"))
 
 
 class TestConfig(BaseConfig):
     TESTING = True
     EMAIL_PROVIDER = "console"
     SMS_PROVIDER = "console"
-

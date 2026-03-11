@@ -15,7 +15,7 @@ Se aplica una separacion por capas:
 - `api/`: endpoints HTTP
 - `services/`: logica de negocio
 - `factory/`: seleccion dinamica del proveedor
-- `providers/`: integraciones externas (SMTP, Supabase OTP SMS, console)
+- `providers/`: integraciones externas (SMTP, Twilio SMS, console)
 - `domain/`: modelos y enums
 
 Flujo:
@@ -30,20 +30,36 @@ Flujo:
 La clase `NotificationProviderFactory` desacopla la API de implementaciones concretas:
 
 - Email: `console`, `smtp`
-- SMS: `console`, `supabase_otp`
+- SMS: `console`, `twilio`
 
 Cambias proveedor solo con variables de entorno, sin modificar controladores.
 
-## Supabase y SMS (importante)
+## Twilio trial (USD 15) recomendado para pruebas
 
-Supabase **no es un gateway SMS generico** para mensajes personalizados.
+Para gastar lo minimo y validar rapido:
 
-Con este proyecto se usa `Supabase Auth OTP` (`/auth/v1/otp`), que:
-- Envia codigos OTP por SMS
-- Requiere que en Supabase tengas configurado un proveedor SMS (Twilio, MessageBird, etc.)
-- Ignora el texto custom del campo `message`
+1. Crea cuenta trial en Twilio y usa el credito inicial.
+2. Verifica el telefono destino en Twilio (trial solo envia a numeros verificados).
+3. Usa el numero trial de Twilio como `TWILIO_FROM_NUMBER`.
+4. Configura `SMS_PROVIDER=twilio`.
 
-Si quieres SMS transaccional libre (texto arbitrario), tendras que integrar otro proveedor compatible o usar `console` para desarrollo.
+Nota: en trial, Twilio agrega un texto de prueba al SMS y tiene restricciones de envio.
+
+Que numero poner:
+- `TWILIO_FROM_NUMBER`: el numero que Twilio te asigna en la consola (`Phone Numbers > Manage > Active numbers`), en formato E.164, por ejemplo `+1415XXXXXXX`.
+- `to` en el request: tu celular verificado en Twilio, tambien en E.164. Para Colombia seria `+57` seguido del numero, por ejemplo `+573001112233`.
+
+## Email con Twilio SendGrid (opcional)
+
+No necesitas otro provider en codigo: puedes usar el provider `smtp` existente.
+
+Config base para SendGrid SMTP:
+- `EMAIL_PROVIDER=smtp`
+- `SMTP_HOST=smtp.sendgrid.net`
+- `SMTP_PORT=587`
+- `SMTP_USERNAME=apikey`
+- `SMTP_PASSWORD=<tu_sendgrid_api_key>`
+- `SMTP_FROM=<sender_verificado_en_sendgrid>`
 
 ## Endpoints
 
@@ -64,7 +80,7 @@ curl -X POST http://localhost:8000/api/v1/notifications/send \
   }'
 ```
 
-### Ejemplo SMS (console)
+### Ejemplo SMS (Twilio)
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/notifications/send \
@@ -72,28 +88,42 @@ curl -X POST http://localhost:8000/api/v1/notifications/send \
   -d '{
     "channel": "sms",
     "to": "+573001112233",
-    "message": "Tu OTP es 123456"
+    "message": "Prueba Twilio desde Flask"
   }'
 ```
 
 ## Configuracion
 
-1. Copia variables:
+Ya existe un `.env` base en el proyecto. Solo reemplaza los valores `REPLACE_WITH_...`.
 
-```bash
-cp .env.example .env
-```
-
-2. Configura proveedor por canal:
+Configura proveedor por canal:
 
 - `EMAIL_PROVIDER=console` o `smtp`
-- `SMS_PROVIDER=console` o `supabase_otp`
+- `SMS_PROVIDER=console` o `twilio`
 
-## Ejecucion local
+## Ejecucion local con venv (PowerShell - Windows)
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+python run.py
+```
+
+Si PowerShell bloquea la activacion:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+## Ejecucion local con venv (Linux/Mac)
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # Linux/Mac
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 python run.py
 ```
@@ -151,4 +181,3 @@ tests/
 Dockerfile
 docker-compose.yml
 ```
-

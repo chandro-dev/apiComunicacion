@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from communication_api import create_app
 from communication_api.config import TestConfig
@@ -15,4 +20,3 @@ def app():
 @pytest.fixture()
 def client(app):
     return app.test_client()
-
