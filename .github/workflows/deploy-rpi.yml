@@ -1,14 +1,10 @@
-name: CD Self-Hosted Deploy
+name: RPi Deploy
 
 on:
   push:
     branches:
       - main
   workflow_dispatch:
-
-concurrency:
-  group: deploy-self-hosted
-  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -27,13 +23,11 @@ jobs:
             echo "Missing required secret APP_ENV_FILE"
             exit 1
           fi
-          cat > .env << 'EOF'
-          ${{ secrets.APP_ENV_FILE }}
-          EOF
+          printf "%s\n" "${{ secrets.APP_ENV_FILE }}" > .env
           chmod 600 .env
 
-      - name: Build and start containers
+      - name: Deploy with Docker Compose
         run: docker compose up -d --build --remove-orphans
 
-      - name: Show running containers
+      - name: Show container status
         run: docker compose ps

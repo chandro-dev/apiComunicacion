@@ -136,12 +136,10 @@ python run.py
 docker compose up --build -d
 ```
 
-## CI/CD con GitHub Self-Hosted (recomendado)
+## Deploy RPi (1 workflow)
 
-Workflows:
-- CI basico (sin tests): `.github/workflows/ci.yml`
-- CD deploy automatico: `.github/workflows/deploy-rpi.yml`
-- Publish opcional a GHCR (manual): `.github/workflows/docker-publish.yml`
+Workflow unico:
+- `.github/workflows/deploy-rpi.yml`
 
 ### 1. Preparar runner en tu servidor (Raspberry Pi / Linux)
 
@@ -160,6 +158,12 @@ sudo systemctl restart actions.runner.<org>-<repo>.<runner_name>.service
 
 No guardes credenciales en el repo. Crea un Environment `production` y agrega el secret:
 - `APP_ENV_FILE` (multilinea, contenido completo de tu `.env`)
+
+Si usas GitHub CLI:
+
+```bash
+gh secret set APP_ENV_FILE --env production < .env
+```
 
 Ejemplo de valor para `APP_ENV_FILE`:
 
