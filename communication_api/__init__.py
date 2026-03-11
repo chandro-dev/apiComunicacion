@@ -10,7 +10,7 @@ from communication_api.extensions import api
 
 
 def create_app(config_object: type[BaseConfig] | None = None) -> Flask:
-    load_dotenv()
+    load_dotenv(".env")
     app = Flask(__name__)
     app.config.from_object(config_object or BaseConfig)
 

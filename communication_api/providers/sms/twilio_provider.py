@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import requests
-
 from communication_api.domain.models import NotificationPayload, SendResult
 from communication_api.exceptions import ConfigError, ProviderError
 from communication_api.providers.base import NotificationProvider
+from twilio.base.exceptions import TwilioRestException
+from twilio.rest import Client
 
 
 class TwilioSmsProvider(NotificationProvider):
@@ -21,6 +21,7 @@ class TwilioSmsProvider(NotificationProvider):
         self.from_number = from_number or None
         self.messaging_service_sid = messaging_service_sid or None
         self.timeout_seconds = timeout_seconds
+        self.client = Client(self.account_sid, self.auth_token)
 
         missing = []
         if not self.account_sid:
@@ -40,35 +41,24 @@ class TwilioSmsProvider(NotificationProvider):
         return "twilio-sms"
 
     def send(self, payload: NotificationPayload) -> SendResult:
-        endpoint = (
-            f"https://api.twilio.com/2010-04-01/Accounts/{self.account_sid}/Messages.json"
-        )
         body: dict[str, str] = {
-            "To": payload.recipient,
-            "Body": payload.message,
+            "to": payload.recipient,
+            "body": payload.message,
         }
         if self.messaging_service_sid:
-            body["MessagingServiceSid"] = self.messaging_service_sid
+            body["messaging_service_sid"] = self.messaging_service_sid
         elif self.from_number:
-            body["From"] = self.from_number
+            body["from_"] = self.from_number
 
         status_callback = payload.metadata.get("status_callback")
         if status_callback:
-            body["StatusCallback"] = str(status_callback)
+            body["status_callback"] = str(status_callback)
 
         try:
-            response = requests.post(
-                endpoint,
-                data=body,
-                auth=(self.account_sid, self.auth_token),
-                timeout=self.timeout_seconds,
-            )
-            if response.status_code >= 400:
-                raise ProviderError(
-                    f"Twilio send failed ({response.status_code}): {response.text}"
-                )
-            data = response.json()
-        except requests.RequestException as exc:
+            message = self.client.messages.create(**body)
+        except TwilioRestException as exc:
+            raise ProviderError(f"Twilio send failed ({exc.code}): {exc.msg}") from exc
+        except Exception as exc:  # noqa: BLE001
             raise ProviderError(f"Twilio request failed: {exc}") from exc
 
         return SendResult(
@@ -76,11 +66,10 @@ class TwilioSmsProvider(NotificationProvider):
             provider=self.provider_name,
             channel=payload.channel,
             recipient=payload.recipient,
-            message_id=data.get("sid"),
+            message_id=message.sid,
             details={
-                "status": data.get("status"),
-                "direction": data.get("direction"),
+                "status": message.status,
+                "direction": message.direction,
                 "trial_note": "Trial accounts can send only to verified numbers.",
             },
         )
-

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Any
 
 from communication_api.domain.enums import Channel
 from communication_api.exceptions import ConfigError

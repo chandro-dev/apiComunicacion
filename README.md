@@ -6,7 +6,7 @@ Incluye:
 - Flask con `app factory`
 - Swagger/OpenAPI con `flask-smorest`
 - Docker listo para Raspberry Pi
-- GitHub Actions para `test`, `build/push` multiarquitectura y `deploy` por SSH
+- GitHub Actions en `self-hosted runner` para CI/CD y despliegue con Docker Compose
 
 ## Arquitectura
 
@@ -142,29 +142,58 @@ pytest -q
 docker compose up --build -d
 ```
 
-### Multi-arch para RPi desde GitHub Actions
+## CI/CD con GitHub Self-Hosted (recomendado)
 
-Workflow: `.github/workflows/docker-publish.yml`
+Workflows:
+- CI: `.github/workflows/ci.yml`
+- CD (deploy): `.github/workflows/deploy-rpi.yml`
+- Publish opcional a GHCR: `.github/workflows/docker-publish.yml`
 
-Publica imagen en:
-- `ghcr.io/<owner>/<repo>:latest` (main)
-- `ghcr.io/<owner>/<repo>:sha-...`
-- `ghcr.io/<owner>/<repo>:vX.Y.Z` (tags)
+### 1. Preparar runner en tu servidor (Raspberry Pi / Linux)
 
-## Deploy automatico a RPi
+Instala Docker, Docker Compose y registra un runner en el repo con labels:
+- `self-hosted`
+- `linux`
 
-Workflow manual: `.github/workflows/deploy-rpi.yml`
+El usuario del runner debe poder ejecutar Docker:
 
-Secrets necesarios:
-- `RPI_HOST`
-- `RPI_USER`
-- `RPI_SSH_KEY`
-- `RPI_APP_DIR`
-- `GHCR_USER`
-- `GHCR_TOKEN`
-- `GHCR_IMAGE` (ejemplo: `ghcr.io/tu-org/api-comunicacion`)
+```bash
+sudo usermod -aG docker <runner_user>
+sudo systemctl restart actions.runner.<org>-<repo>.<runner_name>.service
+```
 
-En la Raspberry, deja `docker-compose.yml` y `.env` en `RPI_APP_DIR`.
+### 2. Guardar `.env` seguro en GitHub
+
+No guardes credenciales en el repo. Crea un Environment `production` y agrega el secret:
+- `APP_ENV_FILE` (multilinea, contenido completo de tu `.env`)
+
+Ejemplo de valor para `APP_ENV_FILE`:
+
+```env
+EMAIL_PROVIDER=smtp
+SMS_PROVIDER=twilio
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=tu_correo@gmail.com
+SMTP_PASSWORD=tu_app_password
+SMTP_FROM=tu_correo@gmail.com
+SMTP_TIMEOUT_SECONDS=10
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_FROM_NUMBER=+1XXXXXXXXXX
+TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_TIMEOUT_SECONDS=10
+```
+
+### 3. Deploy automatico
+
+Al hacer push a `main`, el workflow de CD:
+1. Hace checkout del repo en el runner.
+2. Crea `.env` desde `APP_ENV_FILE`.
+3. Ejecuta `docker compose up -d --build --remove-orphans`.
+4. Valida `http://127.0.0.1:8000/health`.
+
+Si quieres ejecutar manualmente, usa `workflow_dispatch` en `deploy-rpi.yml`.
 
 ## Estructura
 

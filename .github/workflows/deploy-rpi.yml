@@ -1,30 +1,56 @@
-name: Deploy Raspberry Pi
+name: CD Self-Hosted Deploy
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      image_tag:
-        description: "Image tag to deploy (example: latest or sha-xxxx)"
-        required: true
-        default: "latest"
+
+concurrency:
+  group: deploy-self-hosted
+  cancel-in-progress: true
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - linux
+    environment: production
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.RPI_HOST }}
-          username: ${{ secrets.RPI_USER }}
-          key: ${{ secrets.RPI_SSH_KEY }}
-          script: |
-            set -e
-            cd ${{ secrets.RPI_APP_DIR }}
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
-            export GHCR_IMAGE="${{ secrets.GHCR_IMAGE }}"
-            export IMAGE_TAG="${{ github.event.inputs.image_tag }}"
-            docker compose pull
-            docker compose up -d --remove-orphans
-            docker image prune -f
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      - name: Verify Docker
+        run: |
+          docker version
+          docker compose version
+
+      - name: Write .env from GitHub Secret
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.APP_ENV_FILE }}" ]; then
+            echo "Missing required secret APP_ENV_FILE"
+            exit 1
+          fi
+          cat > .env << 'EOF'
+          ${{ secrets.APP_ENV_FILE }}
+          EOF
+          chmod 600 .env
+
+      - name: Build and start containers
+        run: docker compose up -d --build --remove-orphans
+
+      - name: Healthcheck
+        shell: bash
+        run: |
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8000/health >/dev/null; then
+              echo "Service is healthy"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Healthcheck failed"
+          docker compose ps
+          docker compose logs --tail 100 api
+          exit 1

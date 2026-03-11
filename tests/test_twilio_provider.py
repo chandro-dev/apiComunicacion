@@ -19,18 +19,23 @@ def test_twilio_requires_sender_or_messaging_service() -> None:
 
 
 def test_twilio_send_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    class DummyResponse:
-        status_code = 201
-        text = '{"sid":"SM123"}'
+    class DummyMessage:
+        sid = "SM123"
+        status = "queued"
+        direction = "outbound-api"
 
+    class DummyMessages:
         @staticmethod
-        def json() -> dict[str, str]:
-            return {"sid": "SM123", "status": "queued", "direction": "outbound-api"}
+        def create(**kwargs) -> DummyMessage:  # noqa: ANN003
+            return DummyMessage()
 
-    def fake_post(*args, **kwargs) -> DummyResponse:  # noqa: ANN002, ANN003
-        return DummyResponse()
+    class DummyClient:
+        messages = DummyMessages()
 
-    monkeypatch.setattr("communication_api.providers.sms.twilio_provider.requests.post", fake_post)
+    monkeypatch.setattr(
+        "communication_api.providers.sms.twilio_provider.Client",
+        lambda *args, **kwargs: DummyClient(),  # noqa: ARG005
+    )
 
     provider = TwilioSmsProvider(
         account_sid="AC123",
@@ -48,4 +53,3 @@ def test_twilio_send_success(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result.ok is True
     assert result.message_id == "SM123"
     assert result.provider == "twilio-sms"
-
